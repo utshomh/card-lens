@@ -1,38 +1,57 @@
 from fastapi import FastAPI, UploadFile, File
+from fastapi.background import BackgroundTasks
+
 import shutil
+import uuid
 import os
 
+from app.ocr import extract_text
+from app.parser import parse_card_text
+from app.cleanup import cleanup_uploads
+
 app = FastAPI(
-    title="CardLens API",
-    version="0.0.1"
+    title="Card-Lens API"
 )
 
-UPLOAD_DIR = "upload"
+UPLOAD_DIR = "uploads"
 
-os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(
+    UPLOAD_DIR,
+    exist_ok=True
+)
 
-@app.get('/')
-def home():
-    return {
-        "message": "CardLens API is running"
-    }
-
-@app.post('/upload')
-async def upload_card(
+@app.post("/scan-card")
+async def scan_card(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...)
 ):
+    filename = f"{uuid.uuid4()}.jpg"
+
     file_path = os.path.join(
         UPLOAD_DIR,
-        file.filename
+        filename
     )
 
+    # save image
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(
             file.file,
             buffer
         )
 
+    # OCR
+    text = extract_text(file_path)
+
+    # Parse
+    data = parse_card_text(text)
+
+    # cleanup old uploads
+    background_tasks.add_task(
+        cleanup_uploads
+    )
+
     return {
-        "filename": file.filename,
-        "status": "uploaded"
+        "success": True,
+        "data": data,
+        "raw": text
     }
