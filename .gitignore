@@ -13,3 +13,6 @@ test_images/*
 
 # Environment files
 .env
+
+# Uploaded files
+/upload
