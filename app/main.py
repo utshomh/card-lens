@@ -5,8 +5,8 @@ import shutil
 import uuid
 import os
 
-from app.ocr import extract_text
-from app.parser import parse_card_text
+from app.ocr import extract_lines
+from app.parser import parse_ocr_lines
 from app.cleanup import cleanup_uploads
 
 app = FastAPI(
@@ -19,6 +19,7 @@ os.makedirs(
     UPLOAD_DIR,
     exist_ok=True
 )
+
 
 @app.post("/scan-card")
 async def scan_card(
@@ -40,10 +41,10 @@ async def scan_card(
         )
 
     # OCR
-    text = extract_text(file_path)
+    ocr_lines = extract_lines(file_path)
 
     # Parse
-    data = parse_card_text(text)
+    data = parse_ocr_lines(ocr_lines)
 
     # cleanup old uploads
     background_tasks.add_task(
@@ -53,5 +54,5 @@ async def scan_card(
     return {
         "success": True,
         "data": data,
-        "raw": text
+        "raw": ocr_lines
     }
