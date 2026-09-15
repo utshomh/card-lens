@@ -1,40 +1,46 @@
 # Card-Lens
 
-Card-Lens is a microservice API that extracts information from visiting card images and returns structured JSON data.
+CPU-only FastAPI service that extracts business-card fields with PaddleOCR and
+local zero-shot semantic entity recognition. 
 
-## Tech Stack
+## Setup
 
-- Python 3.11
-- FastAPI
-- Uvicorn
-- OpenCV
-- Pillow
-- PaddleOCR
+Python 3.11 is required. From a fresh clone on Windows PowerShell:
 
-## Setup (Windows)
-
-### 1. Create virtual environment
-
-python -m venv venv
-
-### 2. Activate virtual environment
-
-venv\Scripts\activate
-
-### 3. Install dependencies
-
+```powershell
+git clone <repository-url>
+cd card-lens
+py -3.11 -m venv venv
+venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
 pip install -r requirements.txt
+pip install paddleocr==2.7.0.0 --no-deps
+python -c "from app.kie.engine import get_kie_engine; get_kie_engine(); print('KIE model ready')"
+```
 
-### 4. Run API
+The separate PaddleOCR command avoids its obsolete optional PDF dependencies,
+which do not support this Python version and are not used for image scanning.
+The final command downloads `gliner-community/gliner_small-v2.5` once into
+`models/gliner`; the cache is reused afterward. PaddleOCR similarly downloads
+its English OCR weights on the first scan. Internet access is needed only for
+these initial downloads. No paths or environment variables must be configured.
 
+On macOS/Linux, create the environment with `python3.11 -m venv venv` and
+activate it with `source venv/bin/activate`; the remaining commands are the same.
+
+## Run
+
+```powershell
 uvicorn app.main:app --reload
+```
 
-## API
+Open <http://127.0.0.1:8000/docs> and call `POST /scan-card` with an image.
 
-Local API:
+## Test
 
-<http://127.0.0.1:8000>
+```powershell
+pytest -s tests/test_kie.py
+```
 
-Swagger Documentation:
-
-<http://127.0.0.1:8000/docs>
+The integration test scans every image in `tests/sample_cards` and prints the
+extracted entities. See [explanation.md](explanation.md) for the design details.

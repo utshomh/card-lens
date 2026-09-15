@@ -3,7 +3,7 @@ import time
 
 UPLOAD_DIR = "uploads"
 
-FILE_EXPIRY = 600  # seconds (10 minutes)
+FILE_EXPIRY = 60  # seconds (1 minutes)
 
 def cleanup_uploads():
     now = time.time()

@@ -1,58 +1,41 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.background import BackgroundTasks
-
+import os
 import shutil
 import uuid
-import os
 
-from app.ocr import extract_lines
-from app.parser import parse_ocr_lines
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.background import BackgroundTasks
+
 from app.cleanup import cleanup_uploads
+from app.kie import extract_card
+from app.kie.engine import KIEModelError
 
-app = FastAPI(
-    title="Card-Lens API"
-)
+app = FastAPI(title="Card-Lens API")
 
 UPLOAD_DIR = "uploads"
-
-os.makedirs(
-    UPLOAD_DIR,
-    exist_ok=True
-)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
 @app.post("/scan-card")
 async def scan_card(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
+    file: UploadFile = File(...),
 ):
     filename = f"{uuid.uuid4()}.jpg"
+    file_path = os.path.join(UPLOAD_DIR, filename)
 
-    file_path = os.path.join(
-        UPLOAD_DIR,
-        filename
-    )
-
-    # save image
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(
-            file.file,
-            buffer
-        )
+        shutil.copyfileobj(file.file, buffer)
 
-    # OCR
-    ocr_lines = extract_lines(file_path)
+    try:
+        # OCR, layout ordering, and local semantic entity recognition.
+        data = extract_card(file_path)
+    except KIEModelError as exc:
+        # First-run download or cache problems should be actionable to API users.
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
-    # Parse
-    data = parse_ocr_lines(ocr_lines)
-
-    # cleanup old uploads
-    background_tasks.add_task(
-        cleanup_uploads
-    )
+    background_tasks.add_task(cleanup_uploads)
 
     return {
         "success": True,
         "data": data,
-        "raw": ocr_lines
     }

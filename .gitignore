@@ -16,3 +16,6 @@ test_images/*
 
 # Uploaded files
 /uploads
+
+# Downloaded model weights (restored by the README setup command)
+/models/gliner/
